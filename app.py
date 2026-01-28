@@ -9,7 +9,7 @@ from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
 from langchain_classic.chains import RetrievalQA
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 
 # --- Imports pour l'OCR MANUEL (Plus stable) ---
 from rapidocr_onnxruntime import RapidOCR
@@ -185,4 +185,5 @@ elif page == "Chatbot":
                 st.session_state.messages.append({"role": "assistant", "content": res["result"]})
             except Exception as e:
                 st.error(e)
+
 
