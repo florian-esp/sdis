@@ -6,7 +6,7 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2t
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_qdrant import QdrantVectorStore
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from qdrant_client import QdrantClient, models
 
 from langchain_classic.chains import RetrievalQA 
@@ -163,6 +163,7 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
+
 
 
 
