@@ -2,24 +2,19 @@ import streamlit as st
 import tempfile
 import os
 
-# --- Imports Standards (Compatibles anciennes et nouvelles versions) ---
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
-
-# ON UTILISE L'ANCIENNE IMPORTATION QUI EST LA PLUS STABLE
 from langchain_classic.chains import RetrievalQA
 
-# --- CONFIGURATION ---
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "base_connaissances"
 LLM_MODEL = "llama3"
 EMBED_MODEL = "nomic-embed-text"
 
-# --- INITIALISATION ---
-st.set_page_config(page_title="RAG Local - Qdrant & Ollama", layout="wide")
+st.set_page_config(page_title="SDIS - Qdrant & Ollama", layout="wide")
 
 @st.cache_resource
 def get_models():
@@ -31,7 +26,6 @@ def get_models():
 
 embeddings, llm = get_models()
 
-# --- FONCTIONS ---
 def process_documents(uploaded_files):
     docs = []
     for file in uploaded_files:
@@ -67,15 +61,14 @@ def index_data(splits):
         force_recreate=False
     )
 
-# --- INTERFACE ---
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Aller vers :", ["📁 Ajouter des Fichiers", "🤖 Discuter (Chat)"])
 
-if page == "📁 Ajouter des Fichiers":
-    st.title("📁 Alimentation de la Base")
+if page == "Ajouter des Fichiers":
+    st.title("Alimenter la Base de fichiers")
     uploaded_files = st.file_uploader("Sélectionner des fichiers", accept_multiple_files=True, type=['pdf', 'txt'])
 
-    if st.button("Indexer dans Qdrant"):
+    if st.button("Ajouter à la base de fichiers"):
         if not uploaded_files:
             st.warning("Veuillez choisir un fichier.")
         else:
@@ -87,7 +80,7 @@ if page == "📁 Ajouter des Fichiers":
                 except Exception as e:
                     st.error(f"Erreur : {e}")
                     
-    if st.button("⚠️ Reset Base"):
+    if st.button("Réinitialiser la base de fichiers"):
         try:
             client = QdrantClient(url=QDRANT_URL)
             client.delete_collection(COLLECTION_NAME)
@@ -95,8 +88,8 @@ if page == "📁 Ajouter des Fichiers":
         except:
             pass
 
-elif page == "🤖 Discuter (Chat)":
-    st.title("🤖 Assistant IA Local")
+elif page == "Discuter (Chat)":
+    st.title("Assistant IA Local")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -120,8 +113,6 @@ elif page == "🤖 Discuter (Chat)":
                 
                 retriever = vector_store.as_retriever(search_kwargs={"k": 4})
 
-                # --- VERSION UNIVERSELLE (RetrievalQA) ---
-                # Cette méthode fonctionne partout, ne touchez pas à ça.
                 qa_chain = RetrievalQA.from_chain_type(
                     llm=llm,
                     chain_type="stuff",
@@ -130,10 +121,8 @@ elif page == "🤖 Discuter (Chat)":
                 )
 
                 with st.spinner("Recherche..."):
-                    # On utilise "query" qui est la clé standard pour RetrievalQA
                     response = qa_chain.invoke({"query": prompt})
                 
-                # On récupère le résultat dans "result"
                 result_text = response["result"]
                 
                 st.markdown(result_text)
@@ -147,4 +136,5 @@ elif page == "🤖 Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur.")
                 st.info(f"Détail : {e}")
+
 
