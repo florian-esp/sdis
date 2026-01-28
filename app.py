@@ -31,20 +31,17 @@ embeddings, llm = get_models()
 def process_documents(uploaded_files):
     docs = []
     for file in uploaded_files:
-        # Création d'un fichier temporaire avec la bonne extension
         file_extension = f".{file.name.split('.')[-1]}"
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp:
             tmp.write(file.read())
             tmp_path = tmp.name
         
         try:
-            # Sélection du loader en fonction de l'extension
             if file.name.lower().endswith(".pdf"):
                 loader = PyPDFLoader(tmp_path)
             elif file.name.lower().endswith(".docx"):
                 loader = Docx2txtLoader(tmp_path)
             else:
-                # Par défaut on tente de charger comme du texte
                 loader = TextLoader(tmp_path)
                 
             docs.extend(loader.load())
@@ -71,7 +68,7 @@ def index_data(splits):
         embeddings,
         url=QDRANT_URL,
         collection_name=COLLECTION_NAME,
-        force_recreate=False # False pour ajouter aux données existantes
+        force_recreate=False
     )
 
 st.sidebar.title("Navigation")
@@ -163,6 +160,7 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
+
 
 
 
