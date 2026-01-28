@@ -1,175 +1,323 @@
 import streamlit as st
+
 import tempfile
+
 import os
 
-# Importations LangChain
+# --- Imports Modernes LangChain (évite les erreurs d'import) ---
+
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from langchain_ollama import OllamaEmbeddings, ChatOllama
+
 from langchain_qdrant import QdrantVectorStore
-from langchain.chains import RetrievalQA
+
 from qdrant_client import QdrantClient, models
 
+# Imports pour la chaîne de réponse (Nouvelle méthode)
+
+from langchain.chains import create_retrieval_chain
+
+from langchain.chains.combine_documents import create_stuff_documents_chain
+
+from langchain_core.prompts import ChatPromptTemplate
+
 # --- CONFIGURATION ---
-QDRANT_URL = "http://localhost:6333" # URL par défaut pour l'install .deb
-COLLECTION_NAME = "knowledge_base"   # Nom de votre base de savoir
-LLM_MODEL = "llama3"                 # Assurez-vous d'avoir fait 'ollama pull llama3'
-EMBED_MODEL = "nomic-embed-text"     # Assurez-vous d'avoir fait 'ollama pull nomic-embed-text'
+
+QDRANT_URL = "http://localhost:6333" # Port par défaut de Qdrant installé via .deb
+
+COLLECTION_NAME = "base_connaissances"
+
+LLM_MODEL = "llama3"                 # Modèle de Chat
+
+EMBED_MODEL = "nomic-embed-text"     # Modèle d'Embedding
+
+# --- INITIALISATION ---
+
+st.set_page_config(page_title="RAG Local - Qdrant & Ollama", layout="wide")
+
+@st.cache_resource
+
+def get_models():
+
+    """Charge les modèles (mise en cache pour la rapidité)."""
+
+    embeddings = OllamaEmbeddings(model=EMBED_MODEL)
+
+    llm = ChatOllama(model=LLM_MODEL, temperature=0)
+
+    return embeddings, llm
+
+embeddings, llm = get_models()
 
 # --- FONCTIONS UTILITAIRES ---
 
-@st.cache_resource
-def get_models():
-    """Charge les modèles une seule fois pour la performance."""
-    embeddings = OllamaEmbeddings(model=EMBED_MODEL)
-    llm = ChatOllama(model=LLM_MODEL, temperature=0)
-    return embeddings, llm
-
 def process_documents(uploaded_files):
-    """Lit, découpe et transforme les fichiers en vecteurs."""
+
+    """Lit et découpe les fichiers."""
+
     docs = []
+
     for file in uploaded_files:
-        # Création d'un fichier temporaire pour lecture
+
+        # Fichier temporaire nécessaire pour les Loaders LangChain
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file.name.split('.')[-1]}") as tmp:
+
             tmp.write(file.read())
+
             tmp_path = tmp.name
+
         
+
         try:
+
             if file.name.endswith(".pdf"):
+
                 loader = PyPDFLoader(tmp_path)
+
             else:
+
                 loader = TextLoader(tmp_path)
+
             docs.extend(loader.load())
+
         finally:
+
             os.remove(tmp_path) # Nettoyage
 
-    # Découpage du texte (Chunking)
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    splits = text_splitter.split_documents(docs)
-    return splits
+    # Découpage (Chunks)
 
-def index_data(splits, embeddings):
-    """Envoie les données vers Qdrant."""
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+    return text_splitter.split_documents(docs)
+
+def index_data(splits):
+
+    """Indexe les données dans Qdrant."""
+
     client = QdrantClient(url=QDRANT_URL)
+
     
-    # Vérifie si la collection existe, sinon la crée
+
+    # Création de la collection si elle n'existe pas
+
     if not client.collection_exists(COLLECTION_NAME):
+
         client.create_collection(
+
             collection_name=COLLECTION_NAME,
+
             vectors_config=models.VectorParams(size=768, distance=models.Distance.COSINE),
+
         )
 
-    # Ajout des documents (sans écraser l'existant, on ajoute à la suite)
+    # Ajout des vecteurs
+
     QdrantVectorStore.from_documents(
+
         splits,
+
         embeddings,
+
         url=QDRANT_URL,
+
         collection_name=COLLECTION_NAME,
-        force_recreate=False 
+
+        force_recreate=False # False = on ajoute, on n'écrase pas
+
     )
 
-# --- INTERFACE PRINCIPALE ---
+# --- NAVIGATION ---
 
-st.set_page_config(page_title="RAG Local Qdrant", layout="wide")
-embeddings, llm = get_models()
-
-# Menu de Navigation (Sidebar)
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Aller vers :", ["📁 Gestion des Fichiers", "🤖 Chatbot"])
 
-# ---------------- PAGE 1 : GESTION DES FICHIERS ----------------
-if page == "📁 Gestion des Fichiers":
-    st.title("📁 Alimentation de la Base de Connaissances")
-    st.markdown("Ici, vous pouvez ajouter des documents (PDF ou TXT) que l'IA utilisera.")
+page = st.sidebar.radio("Aller vers :", ["📁 Ajouter des Fichiers", "🤖 Discuter (Chat)"])
 
-    uploaded_files = st.file_uploader("Déposez vos fichiers ici", accept_multiple_files=True, type=['pdf', 'txt'])
+# ==========================================
 
-    if st.button("Ajouter à la base Qdrant"):
+# PAGE 1 : GESTION DES FICHIERS
+
+# ==========================================
+
+if page == "📁 Ajouter des Fichiers":
+
+    st.title("📁 Alimentation de la Base")
+
+    st.markdown("Ajoutez ici vos documents PDF ou TXT.")
+
+    uploaded_files = st.file_uploader("Sélectionner des fichiers", accept_multiple_files=True, type=['pdf', 'txt'])
+
+    if st.button("Indexer dans Qdrant"):
+
         if not uploaded_files:
-            st.warning("Veuillez sélectionner des fichiers.")
+
+            st.warning("Veuillez choisir un fichier.")
+
         else:
-            with st.spinner("Traitement et indexation en cours..."):
+
+            with st.spinner("Lecture et Vectorisation en cours..."):
+
                 try:
+
                     # 1. Traitement
+
                     splits = process_documents(uploaded_files)
-                    
+
                     # 2. Indexation
-                    index_data(splits, embeddings)
-                    
-                    st.success(f"Succès ! {len(splits)} nouveaux segments de texte ont été ajoutés à Qdrant.")
+
+                    index_data(splits)
+
+                    st.success(f"Succès ! {len(splits)} segments ajoutés à la base de données.")
+
                 except Exception as e:
-                    st.error(f"Une erreur est survenue : {e}")
 
-    # Optionnel : Bouton pour vider la base
+                    st.error(f"Erreur : {e}")
+
     st.divider()
-    if st.button("⚠️ Effacer toute la mémoire (Reset)", type="primary"):
-        client = QdrantClient(url=QDRANT_URL)
-        if client.collection_exists(COLLECTION_NAME):
-            client.delete_collection(COLLECTION_NAME)
-            st.warning("La base de données a été effacée.")
-        else:
-            st.info("La base est déjà vide.")
 
-# ---------------- PAGE 2 : CHATBOT ----------------
-elif page == "🤖 Chatbot":
-    st.title("🤖 Assistant Documentaire")
-    
-    # Initialisation de l'historique de chat visuel
+    # Bouton pour vider la base (utile pour les tests)
+
+    if st.button("⚠️ Vider la mémoire (Reset)", type="primary"):
+
+        try:
+
+            client = QdrantClient(url=QDRANT_URL)
+
+            client.delete_collection(COLLECTION_NAME)
+
+            st.warning("La base de connaissances a été supprimée.")
+
+        except Exception as e:
+
+            st.error(f"Erreur lors du reset : {e}")
+
+# ==========================================
+
+# PAGE 2 : CHATBOT RAG
+
+# ==========================================
+
+elif page == "🤖 Discuter (Chat)":
+
+    st.title("🤖 Assistant IA Local")
+
+    # Gestion de l'historique visuel
+
     if "messages" not in st.session_state:
+
         st.session_state.messages = []
 
-    # Afficher l'historique
     for message in st.session_state.messages:
+
         with st.chat_message(message["role"]):
+
             st.markdown(message["content"])
 
-    # Zone de saisie utilisateur
-    if prompt := st.chat_input("Posez votre question sur les documents..."):
-        # 1. Afficher le message utilisateur
+    # Zone de saisie
+
+    if prompt := st.chat_input("Posez une question sur vos documents..."):
+
+        # 1. Affiche la question utilisateur
+
         st.session_state.messages.append({"role": "user", "content": prompt})
+
         with st.chat_message("user"):
+
             st.markdown(prompt)
 
-        # 2. Générer la réponse
+        # 2. Génération de la réponse
+
         with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            message_placeholder.markdown("Recherche dans Qdrant...")
-            
+
             try:
-                # Connexion à Qdrant
+
+                # Connexion à la base existante
+
                 vector_store = QdrantVectorStore.from_existing_collection(
+
                     embedding=embeddings,
+
                     collection_name=COLLECTION_NAME,
+
                     url=QDRANT_URL
+
                 )
+
                 
-                # Configuration du retriever (cherche les 4 morceaux les plus pertinents)
+
+                # Le Retriever cherche les infos
+
                 retriever = vector_store.as_retriever(search_kwargs={"k": 4})
+
+                # --- CONSTRUCTION DE LA CHAINE (Nouvelle Syntaxe) ---
+
                 
-                # Chaîne de réponse
-                qa_chain = RetrievalQA.from_chain_type(
-                    llm=llm,
-                    chain_type="stuff",
-                    retriever=retriever,
-                    return_source_documents=True
-                )
+
+                # Le Prompt système qui force l'IA à utiliser le contexte
+
+                prompt_template = ChatPromptTemplate.from_template("""
+
+                Tu es un assistant précis. Utilise les éléments de contexte suivants pour répondre à la question.
+
+                Si tu ne connais pas la réponse d'après le contexte, dis simplement que tu ne sais pas.
+
                 
+
+                <contexte>
+
+                {context}
+
+                </contexte>
+
+                Question: {input}
+
+                """)
+
+                # Chaîne 1 : Créer la réponse à partir des docs
+
+                document_chain = create_stuff_documents_chain(llm, prompt_template)
+
+                
+
+                # Chaîne 2 : Récupérer les docs + Créer la réponse
+
+                retrieval_chain = create_retrieval_chain(retriever, document_chain)
+
                 # Exécution
-                response = qa_chain.invoke({"query": prompt})
-                result_text = response["result"]
+
+                with st.spinner("Recherche dans les documents..."):
+
+                    response = retrieval_chain.invoke({"input": prompt})
+
                 
-                # Affichage de la réponse
-                message_placeholder.markdown(result_text)
+
+                answer = response['answer']
+
                 
-                # Affichage des sources (optionnel, dans un menu déroulant)
-                with st.expander("Sources utilisées"):
-                    for doc in response["source_documents"]:
-                        st.caption(f"📄 Contenu : {doc.page_content[:200]}...")
+
+                # Affichage réponse
+
+                st.markdown(answer)
+
                 
-                # Sauvegarde dans l'historique
-                st.session_state.messages.append({"role": "assistant", "content": result_text})
+
+                # Affichage des sources (Expandable)
+
+                with st.expander("Voir les sources utilisées"):
+
+                    for i, doc in enumerate(response["context"]):
+
+                        st.caption(f"Source {i+1} : {doc.page_content[:200]}...")
+
+                # Sauvegarde historique
+
+                st.session_state.messages.append({"role": "assistant", "content": answer})
 
             except Exception as e:
-                message_placeholder.error("Erreur : La base de données semble vide ou inaccessible.")
-                st.error(f"Détail technique : {e}")
 
+                st.error("Erreur : Impossible de répondre. Avez-vous indexé des documents ?")
+
+                st.info(f"Détail technique : {e}")
