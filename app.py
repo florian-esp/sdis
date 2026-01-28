@@ -139,7 +139,7 @@ elif page == "Discuter (Chat)":
                     llm=llm,
                     chain_type="stuff",
                     retriever=retriever,
-                    return_source_documents=True
+                    return_source_documents=True,
                     chain_type_kwargs={"prompt":QA_CHAIN_PROMPT}
                 )
 
@@ -162,5 +162,6 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
+
 
 
