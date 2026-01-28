@@ -62,7 +62,7 @@ def index_data(splits):
     )
 
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Aller vers :", ["📁 Ajouter des Fichiers", "🤖 Discuter (Chat)"])
+page = st.sidebar.radio("Aller vers :", ["Ajouter des Fichiers", "Discuter (Chat)"])
 
 if page == "Ajouter des Fichiers":
     st.title("Alimenter la Base de fichiers")
@@ -136,5 +136,6 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur.")
                 st.info(f"Détail : {e}")
+
 
 
