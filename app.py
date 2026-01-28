@@ -10,7 +10,7 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
 
 # ON UTILISE L'ANCIENNE IMPORTATION QUI EST LA PLUS STABLE
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import RetrievalQA
 
 # --- CONFIGURATION ---
 QDRANT_URL = "http://localhost:6333"
@@ -147,3 +147,4 @@ elif page == "🤖 Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur.")
                 st.info(f"Détail : {e}")
+
