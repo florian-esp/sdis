@@ -2,7 +2,6 @@ import streamlit as st
 import tempfile
 import os
 
-# Ajout de Docx2txtLoader pour les fichiers Word
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
@@ -41,7 +40,7 @@ def process_documents(uploaded_files):
             # Sélection du loader en fonction de l'extension
             if file.name.lower().endswith(".pdf"):
                 loader = PyPDFLoader(tmp_path)
-            elif file.name.lower().endswith(".docx"): # Prise en charge Word ajoutée ici
+            elif file.name.lower().endswith(".docx"):
                 loader = Docx2txtLoader(tmp_path)
             else:
                 # Par défaut on tente de charger comme du texte
@@ -60,7 +59,6 @@ def process_documents(uploaded_files):
 
 def index_data(splits):
     client = QdrantClient(url=QDRANT_URL)
-    # Vérification et création de la collection si nécessaire
     if not client.collection_exists(COLLECTION_NAME):
         client.create_collection(
             collection_name=COLLECTION_NAME,
@@ -135,11 +133,14 @@ elif page == "Discuter (Chat)":
                 
                 retriever = vector_store.as_retriever(search_kwargs={"k": 4})
 
+                custom_template = "Tu es un assistant francophone utile et précis. Utilise les éléments de contexte suivants pour répondre à la question à la fin. Si tu ne connais pas la réponse, dis simplement que tu ne sais pas. IMPORTANT : Réponds TOUJOURS en français, même si les documents fournis sont dans une autre langue. Contexte: {context} Question : {question} Réponse utile:"
+                QA_CHAIN_PROMPT = PromptTemplate.from_template(custom_template)
                 qa_chain = RetrievalQA.from_chain_type(
                     llm=llm,
                     chain_type="stuff",
                     retriever=retriever,
                     return_source_documents=True
+                    chain_type_kwargs={"prompt":QA_CHAIN_PROMPT}
                 )
 
                 with st.spinner("Recherche..."):
@@ -161,4 +162,5 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
+
 
