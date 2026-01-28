@@ -8,7 +8,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import RetrievalQA
 from langchain.docstore.document import Document
 
 # --- Imports pour l'OCR MANUEL (Plus stable) ---
@@ -185,3 +185,4 @@ elif page == "Chatbot":
                 st.session_state.messages.append({"role": "assistant", "content": res["result"]})
             except Exception as e:
                 st.error(e)
+
