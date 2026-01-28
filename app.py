@@ -2,12 +2,16 @@ import streamlit as st
 import tempfile
 import os
 
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+# Ajout de Docx2txtLoader pour les fichiers Word
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
-from langchain_classic.chains import RetrievalQA
+
+# Note: Assurez-vous que cette importation correspond bien à votre version de LangChain
+# Si "langchain_classic" n'existe pas, utilisez "from langchain.chains import RetrievalQA"
+from langchain.chains import RetrievalQA 
 
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "base_connaissances"
@@ -29,24 +33,36 @@ embeddings, llm = get_models()
 def process_documents(uploaded_files):
     docs = []
     for file in uploaded_files:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file.name.split('.')[-1]}") as tmp:
+        # Création d'un fichier temporaire avec la bonne extension
+        file_extension = f".{file.name.split('.')[-1]}"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp:
             tmp.write(file.read())
             tmp_path = tmp.name
         
         try:
-            if file.name.endswith(".pdf"):
+            # Sélection du loader en fonction de l'extension
+            if file.name.lower().endswith(".pdf"):
                 loader = PyPDFLoader(tmp_path)
+            elif file.name.lower().endswith(".docx"): # Prise en charge Word ajoutée ici
+                loader = Docx2txtLoader(tmp_path)
             else:
+                # Par défaut on tente de charger comme du texte
                 loader = TextLoader(tmp_path)
+                
             docs.extend(loader.load())
+        except Exception as e:
+            st.error(f"Erreur lors de la lecture de {file.name} : {e}")
         finally:
-            os.remove(tmp_path)
+            # Nettoyage du fichier temporaire
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     return text_splitter.split_documents(docs)
 
 def index_data(splits):
     client = QdrantClient(url=QDRANT_URL)
+    # Vérification et création de la collection si nécessaire
     if not client.collection_exists(COLLECTION_NAME):
         client.create_collection(
             collection_name=COLLECTION_NAME,
@@ -58,7 +74,7 @@ def index_data(splits):
         embeddings,
         url=QDRANT_URL,
         collection_name=COLLECTION_NAME,
-        force_recreate=False
+        force_recreate=False # False pour ajouter aux données existantes
     )
 
 st.sidebar.title("Navigation")
@@ -66,7 +82,12 @@ page = st.sidebar.radio("Aller vers :", ["Ajouter des Fichiers", "Discuter (Chat
 
 if page == "Ajouter des Fichiers":
     st.title("Alimenter la Base de fichiers")
-    uploaded_files = st.file_uploader("Sélectionner des fichiers", accept_multiple_files=True, type=['pdf', 'txt'])
+    # Ajout de 'docx' dans la liste des types acceptés
+    uploaded_files = st.file_uploader(
+        "Sélectionner des fichiers", 
+        accept_multiple_files=True, 
+        type=['pdf', 'txt', 'docx']
+    )
 
     if st.button("Ajouter à la base de fichiers"):
         if not uploaded_files:
@@ -75,18 +96,21 @@ if page == "Ajouter des Fichiers":
             with st.spinner("Lecture et Vectorisation en cours..."):
                 try:
                     splits = process_documents(uploaded_files)
-                    index_data(splits)
-                    st.success(f"Succès ! {len(splits)} segments ajoutés.")
+                    if splits:
+                        index_data(splits)
+                        st.success(f"Succès ! {len(splits)} segments ajoutés.")
+                    else:
+                        st.warning("Aucun contenu texte n'a pu être extrait.")
                 except Exception as e:
-                    st.error(f"Erreur : {e}")
+                    st.error(f"Erreur globale : {e}")
                     
     if st.button("Réinitialiser la base de fichiers"):
         try:
             client = QdrantClient(url=QDRANT_URL)
             client.delete_collection(COLLECTION_NAME)
             st.warning("Base effacée.")
-        except:
-            pass
+        except Exception as e:
+            st.error(f"Erreur lors de la suppression : {e}")
 
 elif page == "Discuter (Chat)":
     st.title("Assistant IA Local")
@@ -129,12 +153,13 @@ elif page == "Discuter (Chat)":
                 
                 with st.expander("Sources"):
                     for doc in response["source_documents"]:
+                        # Affichage propre du nom de fichier source si disponible
+                        source_name = doc.metadata.get('source', 'Inconnue')
+                        st.caption(f"**Source:** {os.path.basename(source_name)}")
                         st.caption(doc.page_content[:200] + "...")
 
                 st.session_state.messages.append({"role": "assistant", "content": result_text})
 
             except Exception as e:
-                st.error("Erreur.")
+                st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
-
-
