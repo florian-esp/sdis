@@ -16,9 +16,9 @@ from langchain_qdrant import QdrantVectorStore
 
 from qdrant_client import QdrantClient, models
 
-# Imports pour la chaîne de réponse (Nouvelle méthode)
+# Imports pour la chaînnse (Nouvelle méthode)
 
-from langchain.chains.retrieval import create_retrieval_chain
+from langchain.chains import create_retrieval_chain
 
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
@@ -321,4 +321,5 @@ elif page == "🤖 Discuter (Chat)":
                 st.error("Erreur : Impossible de répondre. Avez-vous indexé des documents ?")
 
                 st.info(f"Détail technique : {e}")
+
 
