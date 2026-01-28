@@ -9,9 +9,7 @@ from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
 
-# Note: Assurez-vous que cette importation correspond bien à votre version de LangChain
-# Si "langchain_classic" n'existe pas, utilisez "from langchain.chains import RetrievalQA"
-from langchain.chains import RetrievalQA 
+from langchain_classic.chains import RetrievalQA 
 
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "base_connaissances"
@@ -163,3 +161,4 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
+
