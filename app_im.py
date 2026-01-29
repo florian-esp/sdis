@@ -19,7 +19,7 @@ from langchain_classic.chains import RetrievalQA
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "base_connaissances"
 LLM_MODEL = "llama3" 
-VISION_MODEL = "llava" 
+VISION_MODEL = "llama3.2-vision" 
 EMBED_MODEL = "nomic-embed-text"
 
 st.set_page_config(page_title="SDIS - Qdrant & Ollama", layout="wide")
@@ -44,7 +44,14 @@ def describe_image(image_path):
             image_data = base64.b64encode(image_file.read()).decode("utf-8")
         
         
-        prompt = "Décris cette image en détail pour un contexte professionnel. Identifie les objets, les situations de danger, les textes visibles et le matériel technique."
+        prompt = """"
+            Analyse cette image technique pour un usage professionnel (Sapeurs-Pompiers / SDIS).
+            Ta tâche comporte 2 étapes:
+                1. TRANSCRIPTION: Lis et transcris tout le texte visible dans l'image, mot pour mot. S'il y a des données chiffrées ou des tableaux, recopie-les.
+                2. DESCRIPTION: Décris ce que représente l'image (schéma tactique, équipement, situation de danger).
+                Format de réponse attendu: **TEXTE DETECTE :** [Insérer le texte lu ici]
+                **ANALYSE VISUELLE :** [Insérer la description ici]     
+        """
         
         msg = HumanMessage(
             content=[
