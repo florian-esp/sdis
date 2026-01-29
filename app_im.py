@@ -99,7 +99,7 @@ def process_pdf_with_images(file_path, filename):
     return documents
 
 
-def process_documents(uploaded_files):
+def process_documents(uploaded_files, image_allowed):
     docs = []
     for file in uploaded_files:
         file_ext = file.name.split('.')[-1].lower()
@@ -110,7 +110,10 @@ def process_documents(uploaded_files):
             tmp_path = tmp.name
 
         try:
-            if file_ext == "pdf":
+            if file_ext == "pdf" and not image_allowed:
+                loader = PyPDFLoader(tmp_path)
+                docs.extend(loader.load())
+            elif file_ext == "pdf":
                 st.info(f"Traitement complet (Texte+Images) de {file.name}...")
                 docs.extend(process_pdf_with_images(tmp_path, file.name))
             
@@ -161,14 +164,15 @@ if page == "Ajouter des Fichiers":
         accept_multiple_files=True, 
         type=['pdf', 'txt', 'docx', 'png', 'jpg', 'jpeg']
     )
-    
+    image_allowed = st.checkbox("Je veux analyser les images en plus du texte")
+
     if st.button("Ajouter à la base de fichiers"):
         if not uploaded_files:
             st.warning("Veuillez choisir un fichier.")
         else:
             with st.spinner("Lecture et Vectorisation (l'analyse d'images peut prendre du temps)..."):
                 try:
-                    splits = process_documents(uploaded_files)
+                    splits = process_documents(uploaded_files, image_allowed)
                     if splits:
                         index_data(splits)
                         st.success(f"Succès ! {len(splits)} segments ajoutés.")
