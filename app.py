@@ -20,9 +20,7 @@ st.set_page_config(page_title="SDIS - Qdrant & Ollama", layout="wide")
 
 @st.cache_resource
 def get_models():
-    # Embeddings
     embeddings = OllamaEmbeddings(model=EMBED_MODEL)
-    # LLM
     llm = ChatOllama(model=LLM_MODEL, temperature=0)
     return embeddings, llm
 
@@ -48,7 +46,6 @@ def process_documents(uploaded_files):
         except Exception as e:
             st.error(f"Erreur lors de la lecture de {file.name} : {e}")
         finally:
-            # Nettoyage du fichier temporaire
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
@@ -76,7 +73,6 @@ page = st.sidebar.radio("Aller vers :", ["Ajouter des Fichiers", "Discuter (Chat
 
 if page == "Ajouter des Fichiers":
     st.title("Alimenter la Base de fichiers")
-    # Ajout de 'docx' dans la liste des types acceptés
     uploaded_files = st.file_uploader(
         "Sélectionner des fichiers", 
         accept_multiple_files=True, 
@@ -160,6 +156,7 @@ elif page == "Discuter (Chat)":
             except Exception as e:
                 st.error("Erreur lors de la génération de la réponse.")
                 st.info(f"Détail : {e}")
+
 
 
 
