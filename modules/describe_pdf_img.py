@@ -3,7 +3,7 @@ from .describe_image import describe_image
 import os 
 from langchain_core.documents import Document
 
-def describe_pdf_img(file_path, filename, tempfile):
+def describe_pdf_img(file_path, filename, tempfile, vision_llm):
     doc = fitz.open(file_path)
     documents = []
 
@@ -28,7 +28,7 @@ def describe_pdf_img(file_path, filename, tempfile):
                 tmp_img_path = tmp_img.name
             
             try:
-                desc = describe_image(tmp_img_path)
+                desc = describe_image(tmp_img_path, vision_llm)
                 image_descriptions.append(f"\n[DESCRIPTION IMAGE PAGE {page_num+1}] : {desc}\n")
             finally:
                 if os.path.exists(tmp_img_path):

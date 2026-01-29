@@ -49,7 +49,7 @@ def process_documents(uploaded_files, image_allowed):
                 docs.extend(loader.load())
             elif file_ext == "pdf":
                 st.info(f"Traitement complet (Texte+Images) de {file.name}...")
-                docs.extend(describe_pdf_img(tmp_path, file.name, tempfile))
+                docs.extend(describe_pdf_img(tmp_path, file.name, tempfile, vision_llm))
             
             elif file_ext in ["png", "jpg", "jpeg"]:
                 st.info(f"Analyse vision de {file.name}...")
