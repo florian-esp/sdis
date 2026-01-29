@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SDIS - Assistant IA</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+        .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        pre { background: #f4f4f4; padding: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Système RAG SDIS (Django)</h1>
+
+    <div class="box">
+        <h3>1. Ajouter un document (.pdf, .docx, .txt)</h3>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="file" name="file">
+            <button type="submit">Indexer le fichier</button>
+        </form>
+    </div>
+
+    <div class="box">
+        <h3>2. Poser une question</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" name="question" style="width: 80%;" placeholder="Votre question...">
+            <button type="submit">Envoyer</button>
+        </form>
+    </div>
+
+    {% if reponse %}
+    <div class="box" style="background-color: #eefbff;">
+        <strong>Réponse :</strong>
+        <p>{{ reponse }}</p>
+    </div>
+    {% endif %}
+</body>
+</html>
