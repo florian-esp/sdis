@@ -144,8 +144,10 @@ elif page == "Discuter (Chat)":
                 )
                 retriever = vector_store.as_retriever(search_kwargs={"k": 4})
                 
-                custom_template = """Tu es un assistant francophone utile et précis. 
+                custom_template = """Tu es un assistant francophone technique pour le SDIS / les pompiers. 
                 Utilise les éléments de contexte suivants pour répondre à la question à la fin.
+                REGLE IMPORTANTE: Si plusieurs documents donnent des informations contradictoires, NE CHOISIS PAS. Signale explicitement la contradiction en la citant et leur sources si possible.
+                Si une information semble obsolète par rapport à une autre (dates), précise-le
                 Note : Le contexte contient des descriptions d'images analysées par IA.
                 Si tu ne connais pas la réponse, dis simplement que tu ne sais pas.
                 
